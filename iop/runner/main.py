@@ -20,7 +20,7 @@ async def mont_flow(flow, script, penalty):
     logger.info("stopped")
 
 
-async def monitor(routings, penalty):
+async def monitor(routings, script, penalty):
     tasks = []
     for routing in routings:
         t = asyncio.get_event_loop().create_task(mont_flow(routing, script, penalty))
@@ -41,12 +41,14 @@ def main():
     location = args.scripts_location
     routings = []
 
+    sys.path.append(os.path.dirname(os.path.abspath(location)))
+
     for script in os.listdir(location):
         path = os.path.join(location, script)
         if path.endswith('.py'):
             root.info('found %s', path)
-            sys.path.append(os.path.abspath(path))
-            md = __import__(script[:-3])
+            name = os.path.basename(location)
+            md = getattr(__import__(name + '.' + script[:-3]), script[:-3])
             if not hasattr(md, 'flow'):
                 root.warning("<flow> method not found in %s", path)
             elif not asyncio.iscoroutinefunction(md.flow):
@@ -54,7 +56,7 @@ def main():
             else:
                 routings.append(md.flow)
 
-    asyncio.get_event_loop().run_until_complete(monitor(routings, args.penalty))
+            asyncio.get_event_loop().run_until_complete(monitor(routings, script, args.penalty))
 
 
 if __name__ == '__main__':
