@@ -2,3 +2,6 @@
 dev
 **.pyc
 sample
+build
+dist
+*.egg-info
