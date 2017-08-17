@@ -15,7 +15,7 @@ async def mont_flow(flow, script, penalty):
         except Stop:
             break
         except Exception as ex:
-            logger.error("exception catch: %s", ex)
+            logger.error(ex, exc_info=True)
             await asyncio.sleep(penalty)
     logger.info("stopped")
 

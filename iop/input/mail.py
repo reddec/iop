@@ -23,6 +23,12 @@ class MailBox:
             res, _ = await client.select()
             assert res == 'OK'
             self.__client = client
+        try:
+            await self.__client.noop()
+        except Exception as ex:
+            self.__client = None
+            return await self.__connection()
+
         return self.__client
 
     async def __get_unseen_uid(self):
