@@ -3,15 +3,17 @@ import os
 import sys
 import logging
 import argparse
+
+from iop.core import flows
 from iop.core.util import Stop
 
 
-async def mont_flow(flow, script, penalty):
-    logger = logging.getLogger(script[:-3])
+async def mont_flow(flow, module, penalty):
+    logger = logging.getLogger(module)
     logger.info("started")
     while True:
         try:
-            await flow(logger)
+            await flow()
         except Stop:
             break
         except Exception as ex:
@@ -20,10 +22,10 @@ async def mont_flow(flow, script, penalty):
     logger.info("stopped")
 
 
-async def monitor(routings, script, penalty):
+async def monitor(routings, penalty):
     tasks = []
-    for routing in routings:
-        t = asyncio.get_event_loop().create_task(mont_flow(routing, script, penalty))
+    for routing, module in routings:
+        t = asyncio.get_event_loop().create_task(mont_flow(routing, module, penalty))
         tasks.append(t)
     await asyncio.wait(tasks)
 
@@ -37,9 +39,8 @@ def main():
 
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-    root = logging.getLogger('ioio')
-    location = args.scripts_location
-    routings = []
+    root = logging.getLogger('iop')
+    location = os.path.abspath(args.scripts_location)
 
     sys.path.append(os.path.dirname(os.path.abspath(location)))
 
@@ -48,15 +49,9 @@ def main():
         if path.endswith('.py'):
             root.info('found %s', path)
             name = os.path.basename(location)
-            md = getattr(__import__(name + '.' + script[:-3]), script[:-3])
-            if not hasattr(md, 'flow'):
-                root.warning("<flow> method not found in %s", path)
-            elif not asyncio.iscoroutinefunction(md.flow):
-                root.warning("<flow> is not corouting function in %s", path)
-            else:
-                routings.append(md.flow)
+            getattr(__import__(name + '.' + script[:-3]), script[:-3])
 
-            asyncio.get_event_loop().run_until_complete(monitor(routings, script, args.penalty))
+    asyncio.get_event_loop().run_until_complete(monitor(flows, args.penalty))
 
 
 if __name__ == '__main__':
